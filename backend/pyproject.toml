@@ -110,6 +110,11 @@ ignore = [
 ]
 
 [tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::sqlalchemy.exc.MovedIn20Warning",
+    "ignore::pydantic.warnings.PydanticDeprecatedSince20",
+]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
