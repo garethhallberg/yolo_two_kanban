@@ -31,16 +31,16 @@
 
 ### Checklist:
 
-- [ ] Create project structure with proper separation (routers, models, schemas, services)
-- [ ] Set up FastAPI backend with basic "hello world" endpoint
-- [ ] Create Dockerfile with multi-stage build for FastAPI + NextJS
-- [ ] Create docker-compose.yml for local development with hot-reload
-- [ ] Write start/stop scripts for Mac, PC, Linux (handling Docker and local dev)
-- [ ] Set up Python environment with uv package manager
-- [ ] Configure basic logging and error handling
-- [ ] Create .dockerignore and .gitignore files
-- [ ] Test that backend serves static HTML at /
-- [ ] Test API call functionality
+- [x] Create project structure with proper separation (routers, models, schemas, services)
+- [x] Set up FastAPI backend with basic "hello world" endpoint
+- [x] Create Dockerfile with multi-stage build for FastAPI + NextJS
+- [x] Create docker-compose.yml for local development with hot-reload
+- [x] Write start/stop scripts for Mac, PC, Linux (handling Docker and local dev)
+- [x] Set up Python environment with uv package manager
+- [x] Configure basic logging and error handling
+- [x] Create .dockerignore and .gitignore files
+- [x] Test that backend serves static HTML at /
+- [x] Test API call functionality
 
 ### Success Criteria:
 
