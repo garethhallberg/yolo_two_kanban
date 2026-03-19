@@ -22,8 +22,8 @@ RUN apt-get update && apt-get install -y \
 # Install uv (fast Python package manager)
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Set PATH to include uv
-ENV PATH="/root/.cargo/bin:$PATH"
+# Set PATH to include uv (installed to ~/.local/bin by default)
+ENV PATH="/root/.local/bin:$PATH"
 
 # Set working directory
 WORKDIR /app
@@ -37,9 +37,10 @@ RUN uv pip install --system -r pyproject.toml
 # Copy backend source code
 COPY backend/src ./src
 COPY backend/tests ./tests
+COPY backend/static ./static
 
 # Stage 2: Node.js dependencies and frontend build
-FROM node:18-alpine as node-base
+FROM node:20-alpine as node-base
 
 WORKDIR /app/frontend
 

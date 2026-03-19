@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
@@ -40,7 +42,6 @@ export interface KanbanCardProps {
 
 export function KanbanCard({
   card,
-  isDragging = false,
   onClick,
   onEdit,
   onDelete,
@@ -50,6 +51,26 @@ export function KanbanCard({
 }: KanbanCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: card.id,
+    data: {
+      type: 'card',
+      card,
+    },
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
   const priorityColor = getPriorityColor(card.priority || 'medium');
   const priorityLabel = getPriorityLabel(card.priority || 'medium');
   const isOverdue = card.dueDate ? isCardOverdue(card) : false;
@@ -67,6 +88,8 @@ export function KanbanCard({
   
   return (
     <Card
+      ref={setNodeRef}
+      style={style}
       className={cn(
         'relative p-4 transition-all duration-200 cursor-grab active:cursor-grabbing',
         'hover:shadow-md hover:border-primary/50',
@@ -77,6 +100,8 @@ export function KanbanCard({
       onClick={() => onClick?.(card)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      {...attributes}
+      {...listeners}
     >
       {/* Drag handle */}
       <div className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">

@@ -120,8 +120,17 @@ export function KanbanBoard({ initialBoard, onBoardChange }: KanbanBoardProps) {
       const overColumn = board.columns.find(c => c.id === overId);
       if (overColumn) {
         // Move card to new column
+        const targetColumnCards = board.cards
+          .filter(card => card.columnId === overColumn.id)
+          .sort((a, b) => a.position - b.position);
+        
+        // Determine position in new column (add to end)
+        const newPosition = targetColumnCards.length;
+        
         const updatedCards = board.cards.map(card =>
-          card.id === activeId ? { ...card, columnId: overColumn.id } : card
+          card.id === activeId 
+            ? { ...card, columnId: overColumn.id, position: newPosition }
+            : card
         );
         const updatedBoard = { ...board, cards: updatedCards };
         setBoard(updatedBoard);
@@ -132,16 +141,66 @@ export function KanbanBoard({ initialBoard, onBoardChange }: KanbanBoardProps) {
       // Check if dropped on another card
       const overCard = board.cards.find(c => c.id === overId);
       if (overCard) {
-        // Move card within same column
-        const oldIndex = board.cards.findIndex(c => c.id === activeId);
-        const newIndex = board.cards.findIndex(c => c.id === overId);
-        
-        if (oldIndex !== newIndex) {
-          const updatedCards = arrayMove(board.cards, oldIndex, newIndex);
-          const updatedBoard = { ...board, cards: updatedCards };
+        // Both cards should be in the same column for reordering
+        if (activeCard.columnId !== overCard.columnId) {
+          // Moving to a different column
+          const targetColumnCards = board.cards
+            .filter(card => card.columnId === overCard.columnId)
+            .sort((a, b) => a.position - b.position);
+          
+          const overCardIndex = targetColumnCards.findIndex(c => c.id === overId);
+          const newPosition = overCardIndex;
+          
+          // Update positions for cards in target column
+          const updatedCards = board.cards.map(card => {
+            if (card.columnId === overCard.columnId && card.id !== activeId) {
+              if (card.position >= newPosition) {
+                return { ...card, position: card.position + 1 };
+              }
+            }
+            return card;
+          });
+          
+          // Add the active card with new position
+          const finalCards = updatedCards.map(card =>
+            card.id === activeId
+              ? { ...card, columnId: overCard.columnId, position: newPosition }
+              : card
+          );
+          
+          const updatedBoard = { ...board, cards: finalCards };
           setBoard(updatedBoard);
           onBoardChange?.(updatedBoard);
+        } else {
+          // Reordering within the same column
+          const columnCards = board.cards
+            .filter(card => card.columnId === activeCard.columnId)
+            .sort((a, b) => a.position - b.position);
+          
+          const oldIndex = columnCards.findIndex(c => c.id === activeId);
+          const newIndex = columnCards.findIndex(c => c.id === overId);
+          
+          if (oldIndex !== newIndex) {
+            const reorderedCards = arrayMove(columnCards, oldIndex, newIndex);
+            
+            // Update positions
+            const positionMap = new Map<string, number>();
+            reorderedCards.forEach((card, index) => {
+              positionMap.set(card.id, index);
+            });
+            
+            const updatedCards = board.cards.map(card => 
+              positionMap.has(card.id) 
+                ? { ...card, position: positionMap.get(card.id)! }
+                : card
+            );
+            
+            const updatedBoard = { ...board, cards: updatedCards };
+            setBoard(updatedBoard);
+            onBoardChange?.(updatedBoard);
+          }
         }
+        return;
       }
     }
 
