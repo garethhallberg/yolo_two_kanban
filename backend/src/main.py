@@ -9,8 +9,11 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.config.settings import settings
-from src.api.routers import health, hello
+from src.api.routers import health, hello, auth
+from src.database.connection import init_db
 from src.utils.logging import configure_logging
+
+logger = logging.getLogger(__name__)
 
 # Configure logging
 configure_logging()
@@ -26,6 +29,10 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Kanban Backend API")
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"Debug mode: {settings.debug}")
+    
+    # Initialize database
+    init_db()
+    logger.info("Database initialized")
     
     yield
     
@@ -74,8 +81,13 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # Include routers
+logger.info("Including health router at /api/health")
 app.include_router(health.router, prefix="/api/health", tags=["health"])
+logger.info("Including hello router at /api/hello")
 app.include_router(hello.router, prefix="/api/hello", tags=["hello"])
+logger.info("Including auth router at /api/auth")
+app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
+logger.info("All routers included")
 
 
 @app.get("/")

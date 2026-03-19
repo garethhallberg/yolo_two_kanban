@@ -28,9 +28,9 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./kanban.db"
     
     # Authentication
-    jwt_secret_key: str = "your-secret-key-change-in-production"
-    jwt_algorithm: str = "HS256"
-    jwt_access_token_expire_minutes: int = 30
+    SECRET_KEY: str = "your-secret-key-change-in-production"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
     # AI Integration
     openrouter_api_key: Optional[str] = None

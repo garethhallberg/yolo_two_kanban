@@ -18,6 +18,7 @@ import { KanbanBoard as KanbanBoardType, KanbanColumn as KanbanColumnType, Kanba
 import { Button } from '@/components/ui/Button';
 import { Plus, Settings } from 'lucide-react';
 import { CardEditor } from './CardEditor';
+import { Header } from '@/components/layout/Header';
 
 interface KanbanBoardProps {
   initialBoard?: KanbanBoardType;
@@ -353,6 +354,9 @@ export function KanbanBoard({ initialBoard, onBoardChange }: KanbanBoardProps) {
           </div>
         </div>
       )}
+
+      {/* Header */}
+      <Header />
 
       {/* Board Content */}
       <div className="flex-1 overflow-x-auto p-4">
