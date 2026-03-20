@@ -28,15 +28,11 @@ class CardUpdate(BaseModel):
     priority: Optional[str] = None
     assignee: Optional[str] = None
     due_date: Optional[datetime] = None
-    tags: Optional[List[str]] = None
 
-    @field_validator('priority')
-    def validate_priority(cls, v):
-        if v is not None:
-            valid_priorities = ['low', 'medium', 'high', 'critical']
-            if v not in valid_priorities:
-                raise ValueError(f'Priority must be one of {valid_priorities}')
-        return v
+
+class CardMove(BaseModel):
+    to_column_id: int
+    new_position: float
 
 class CardResponse(CardBase):
     id: int

@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from ...config.settings import Settings
 from ...database.connection import get_db
 from ...database.models import User
-from ...schemas.card import CardCreate, CardResponse, CardUpdate
+from ...schemas.card import CardCreate, CardResponse, CardUpdate, CardMove
 from ...services.board_service import BoardService
 from ...services.column_service import ColumnService
 from ...services.card_service import CardService
@@ -137,12 +137,13 @@ def delete_card(
 @router.put("/{card_id}/move", response_model=CardResponse)
 def move_card(
     card_id: int,
-    new_column_id: int,
-    new_position: float,
+    move_data: CardMove,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Session = Depends(get_db)
 ):
     """Move card to different column and/or position"""
+    new_column_id = move_data.to_column_id
+    new_position = move_data.new_position
     logger.info(f"[BACKEND] Moving card {card_id} to column {new_column_id} at position {new_position}")
     
     # Get card
