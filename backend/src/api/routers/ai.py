@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 
 from src.services.ai_service import openrouter_service
-from src.schemas.ai import AIRequest, AIResponse, AITestResponse, AIHealthCheck
+from src.schemas.ai import AIRequest, AIResponse, AITestResponse, AIHealthCheck, AIKanbanResponse
 from src.api.routers.auth import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -64,23 +64,67 @@ async def test_ai_connection(
         )
 
 
-@router.post("/chat", response_model=AIResponse)
+@router.post("/chat", response_model=AIKanbanResponse)
 async def chat_with_ai(
     request: AIRequest,
     current_user: dict = Depends(get_current_user)
-) -> AIResponse:
+) -> AIKanbanResponse:
     """
-    Chat with AI assistant.
+    Chat with AI assistant for Kanban operations.
     
     This endpoint sends a user message to the OpenRouter API
-    and returns the AI response.
+    and returns a structured response that may include Kanban updates.
     """
     try:
         logger.info(f"User {current_user['username']} sending message to AI: {request.message[:50]}...")
         
-        # Prepare messages for OpenRouter format
+        # Get user's board for context
+        from src.services.board_service import BoardService
+        from src.database.session import get_db
+        
+        db = next(get_db())
+        board = BoardService.get_board_with_columns_and_cards(db, current_user['id'])
+        
+        # Serialize board state for AI context
+        board_context = BoardService.serialize_board_for_ai(board) if board else {"error": "No board found"}
+        
+        # Prepare messages for OpenRouter format with context and prompt engineering
+        system_prompt = """
+You are an AI assistant helping with Kanban board management. 
+Analyze the current board state and user request, then provide helpful responses.
+
+Guidelines:
+1. Always acknowledge the current board state
+2. For requests to create/edit/move cards, provide clear confirmation
+3. For complex requests, ask for clarification if needed
+4. Keep responses concise and action-oriented
+5. If making changes, explain what you'll do before doing it
+6. Use structured JSON format when providing Kanban updates
+
+Response format for Kanban updates:
+{
+  "user_response": {
+    "text": "Your response to the user",
+    "explanation": "Optional explanation of actions"
+  },
+  "kanban_updates": [
+    {
+      "action": "CREATE|UPDATE|MOVE|DELETE",
+      "element_type": "board|column|card",
+      "element_id": null,
+      "element_data": {},
+      "target_column_id": null,
+      "new_position": null
+    }
+  ],
+  "requires_confirmation": true/false
+}
+"""
+        
+        context_message = f"Current Kanban board state:\n{board_context}\n\nUser request: {request.message}"
         messages = [
-            {"role": "user", "content": request.message}
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": context_message}
         ]
         
         # Get AI response
@@ -90,15 +134,202 @@ async def chat_with_ai(
             temperature=request.temperature
         )
         
-        # Calculate approximate token usage (simple estimation)
-        # In production, this should come from the API response
-        tokens_used = len(request.message.split()) + len(response.split())
+        # Parse AI response for structured Kanban updates
+        kanban_updates = []
+        requires_confirmation = False
         
-        return AIResponse(
-            response=response,
-            model=openrouter_service.model,
-            tokens_used=tokens_used,
-            timestamp=datetime.utcnow()
+        try:
+            # Try to parse structured response (for AI that returns JSON)
+            import json
+            if response.strip().startswith('{') and response.strip().endswith('}'):
+                parsed_response = json.loads(response)
+                if 'kanban_updates' in parsed_response:
+                    # Validate and parse updates
+                    from src.schemas.ai import KanbanUpdate
+                    for update_data in parsed_response['kanban_updates']:
+                        try:
+                            update = KanbanUpdate(**update_data)
+                            kanban_updates.append(update)
+                        except Exception as e:
+                            logger.warning(f"Invalid Kanban update format: {e}")
+                    
+                    requires_confirmation = parsed_response.get('requires_confirmation', False)
+                    
+                    # Use the text response from the structured format if available
+                    if 'user_response' in parsed_response:
+                        response_text = parsed_response['user_response'].get('text', response)
+                        explanation = parsed_response['user_response'].get('explanation', None)
+                    else:
+                        response_text = response
+                        explanation = None
+                else:
+                    response_text = response
+                    explanation = None
+            else:
+                response_text = response
+                explanation = None
+                
+        except Exception as e:
+            logger.warning(f"Failed to parse structured AI response: {e}")
+            response_text = response
+            explanation = None
+        
+        # Add fallback handling for malformed responses
+        if not response_text or response_text.strip() == "":
+            response_text = "I'm sorry, I couldn't process your request properly. Please try again."
+            explanation = "The AI response was empty or malformed"
+        
+        elif len(response_text) > 5000:  # Very long response
+            response_text = response_text[:5000] + "... (response truncated)"
+            explanation = "The AI response was very long and has been truncated"
+        
+        # Store conversation history
+        try:
+            from src.database.models import AIConversation, AIConversationMessage
+            from src.services.ai_service import generate_session_id
+            
+            # Get or create conversation session
+            db = next(get_db())
+            conversation = db.query(AIConversation).filter(
+                AIConversation.user_id == current_user['id'],
+                AIConversation.is_active == True
+            ).first()
+            
+            if not conversation:
+                # Create new conversation session
+                session_id = generate_session_id()
+                conversation = AIConversation(
+                    user_id=current_user['id'],
+                    session_id=session_id,
+                    is_active=True
+                )
+                db.add(conversation)
+                db.commit()
+                db.refresh(conversation)
+            
+            # Store user message
+            user_message = AIConversationMessage(
+                conversation_id=conversation.id,
+                role="user",
+                content=request.message,
+                kanban_updates=None,
+                tokens_used=len(request.message.split())
+            )
+            db.add(user_message)
+            
+            # Store AI response
+            ai_message = AIConversationMessage(
+                conversation_id=conversation.id,
+                role="ai",
+                content=response_text,
+                kanban_updates=[update.model_dump() for update in kanban_updates] if kanban_updates else None,
+                tokens_used=len(response_text.split())
+            )
+            db.add(ai_message)
+            
+            db.commit()
+            
+        except Exception as e:
+            logger.error(f"Failed to store conversation history: {e}")
+            # Continue with response even if conversation storage fails
+        
+        # Apply Kanban updates if any (atomic operation)
+        if kanban_updates:
+            try:
+                # Import services for database operations
+                from src.services.board_service import BoardService
+                from src.services.column_service import ColumnService
+                from src.services.card_service import CardService
+                from src.schemas.board import BoardUpdate
+                from src.schemas.column import ColumnCreate, ColumnUpdate
+                from src.schemas.card import CardCreate, CardUpdate
+                
+                # Get database session
+                db = next(get_db())
+                
+                # Start transaction
+                db.begin()
+                
+                try:
+                    # Apply each update in order
+                    for update in kanban_updates:
+                        if update.element_type == "board":
+                            if update.action == ActionType.CREATE:
+                                # Create new board
+                                board_data = BoardCreate(**update.element_data)
+                                BoardService.create_board(db, current_user['id'], board_data)
+                            elif update.action == ActionType.UPDATE and update.element_id:
+                                # Update existing board
+                                board_data = BoardUpdate(**update.element_data)
+                                BoardService.update_board(db, update.element_id, board_data)
+                            elif update.action == ActionType.DELETE and update.element_id:
+                                # Delete board
+                                BoardService.delete_board(db, update.element_id)
+                                
+                        elif update.element_type == "column":
+                            if update.action == ActionType.CREATE:
+                                # Create new column
+                                column_data = ColumnCreate(**update.element_data)
+                                ColumnService.create_column(db, column_data.board_id, column_data)
+                            elif update.action == ActionType.UPDATE and update.element_id:
+                                # Update existing column
+                                column_data = ColumnUpdate(**update.element_data)
+                                ColumnService.update_column(db, update.element_id, column_data)
+                            elif update.action == ActionType.DELETE and update.element_id:
+                                # Delete column
+                                ColumnService.delete_column(db, update.element_id)
+                            elif update.action == ActionType.MOVE and update.element_id:
+                                # Move column (update position)
+                                column_data = ColumnUpdate(position=update.new_position)
+                                ColumnService.update_column(db, update.element_id, column_data)
+                                
+                        elif update.element_type == "card":
+                            if update.action == ActionType.CREATE:
+                                # Create new card
+                                card_data = CardCreate(**update.element_data)
+                                CardService.create_card(db, card_data.column_id, card_data)
+                            elif update.action == ActionType.UPDATE and update.element_id:
+                                # Update existing card
+                                card_data = CardUpdate(**update.element_data)
+                                CardService.update_card(db, update.element_id, card_data)
+                            elif update.action == ActionType.DELETE and update.element_id:
+                                # Delete card
+                                CardService.delete_card(db, update.element_id)
+                            elif update.action == ActionType.MOVE and update.element_id:
+                                # Move card to different column
+                                if update.target_column_id is not None and update.new_position is not None:
+                                    CardService.move_card(db, update.element_id, update.target_column_id, update.new_position)
+                    
+                    # Commit transaction if all updates succeed
+                    db.commit()
+                    logger.info(f"Successfully applied {len(kanban_updates)} Kanban updates")
+                    
+                except Exception as e:
+                    # Rollback transaction if any update fails
+                    db.rollback()
+                    logger.error(f"Failed to apply Kanban updates: {e}")
+                    response_text = f"AI analysis complete, but updates failed: {str(e)}"
+                    explanation = "Some updates could not be applied due to errors"
+                    kanban_updates = []  # Clear updates since they weren't applied
+                    
+            except Exception as e:
+                logger.error(f"Error setting up transaction for Kanban updates: {e}")
+                response_text = f"AI analysis complete, but could not prepare updates: {str(e)}"
+                explanation = "Updates could not be prepared due to system error"
+                kanban_updates = []
+        
+        # Final fallback for any remaining issues
+        if not response_text or response_text.strip() == "":
+            response_text = "I'm sorry, I encountered an unexpected error processing your request."
+            explanation = "An unexpected error occurred"
+        
+        return AIKanbanResponse(
+            user_response={
+                "text": response_text,
+                "explanation": explanation or "AI has analyzed your Kanban board and provided this response"
+            },
+            kanban_updates=kanban_updates,
+            requires_confirmation=requires_confirmation
         )
         
     except Exception as e:

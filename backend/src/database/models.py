@@ -70,3 +70,34 @@ class KanbanCard(Base):
 
     # Relationships
     column = relationship("KanbanColumn", back_populates="cards")
+
+
+class AIConversation(Base):
+    __tablename__ = "ai_conversations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    session_id = Column(String(64), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    is_active = Column(Boolean, default=True)
+    
+    # Relationships
+    user = relationship("User")
+    messages = relationship("AIConversationMessage", back_populates="conversation",
+                           cascade="all, delete-orphan", order_by="AIConversationMessage.created_at")
+
+
+class AIConversationMessage(Base):
+    __tablename__ = "ai_conversation_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    conversation_id = Column(Integer, ForeignKey("ai_conversations.id", ondelete="CASCADE"), nullable=False, index=True)
+    role = Column(String(20), nullable=False)  # 'user' or 'ai'
+    content = Column(String, nullable=False)
+    kanban_updates = Column(JSON, nullable=True)  # Store any Kanban updates from this message
+    tokens_used = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    conversation = relationship("AIConversation", back_populates="messages")

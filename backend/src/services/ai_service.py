@@ -3,6 +3,7 @@ OpenRouter AI service for Kanban application.
 """
 import logging
 import time
+import uuid
 from typing import Any, Dict, Optional
 
 import httpx
@@ -11,6 +12,11 @@ from httpx import HTTPStatusError, RequestError
 from src.config.settings import settings
 
 logger = logging.getLogger(__name__)
+
+
+def generate_session_id() -> str:
+    """Generate a unique session ID for AI conversations"""
+    return str(uuid.uuid4().hex)
 
 
 class OpenRouterService:

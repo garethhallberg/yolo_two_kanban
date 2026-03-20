@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, func
 
@@ -66,3 +66,46 @@ class BoardService:
             )
             .first()
         )
+
+    @staticmethod
+    def serialize_board_for_ai(board: KanbanBoard) -> Dict[str, Any]:
+        """Serialize board state for AI context"""
+        if not board:
+            return {"error": "No board found"}
+        
+        # Serialize board
+        board_data = {
+            "id": board.id,
+            "title": board.title,
+            "created_at": board.created_at.isoformat() if board.created_at else None,
+            "updated_at": board.updated_at.isoformat() if board.updated_at else None,
+            "columns": []
+        }
+        
+        # Serialize columns and their cards
+        for column in board.columns:
+            column_data = {
+                "id": column.id,
+                "title": column.title,
+                "position": column.position,
+                "created_at": column.created_at.isoformat() if column.created_at else None,
+                "updated_at": column.updated_at.isoformat() if column.updated_at else None,
+                "cards": []
+            }
+            
+            # Serialize cards
+            for card in column.cards:
+                card_data = {
+                    "id": card.id,
+                    "title": card.title,
+                    "description": card.description,
+                    "position": card.position,
+                    "tags": card.tags,
+                    "created_at": card.created_at.isoformat() if card.created_at else None,
+                    "updated_at": card.updated_at.isoformat() if card.updated_at else None
+                }
+                column_data["cards"].append(card_data)
+            
+            board_data["columns"].append(column_data)
+        
+        return board_data
