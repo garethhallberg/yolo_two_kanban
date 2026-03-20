@@ -143,15 +143,15 @@
 
 - [x] Design database schema with proper tables (not JSON blob):
   - [x] Users table (for future expansion)
-  - [ ] Boards table (one per user for MVP)
-  - [ ] Columns table (linked to boards)
-  - [ ] Cards table (linked to columns)
+  - [x] Boards table (one per user for MVP)
+  - [x] Columns table (linked to boards)
+  - [x] Cards table (linked to columns)
   - [ ] AI conversations table (for history)
-- [ ] Create SQLAlchemy models for all tables
-- [ ] Implement database migration system (Alembic)
-- [ ] Create database initialization script
-- [ ] Document schema in docs/database_schema.md
-- [ ] Get user sign-off on schema design
+- [x] Create SQLAlchemy models for all tables
+- [x] Implement database migration system (Alembic)
+- [x] Create database initialization script
+- [x] Document schema in docs/database_schema.md
+- [x] Get user sign-off on schema design
 - [ ] Implement database connection pooling
 
 ### Success Criteria:
@@ -164,12 +164,12 @@
 
 ### Tests:
 
-- [ ] Unit tests for database models
-- [ ] Integration tests for database operations
+- [x] Unit tests for database models
+- [x] Integration tests for database operations
 - [ ] Migration tests
 - [ ] Schema validation tests
 
-**Notes**: Only User model exists. Kanban models (Board, Column, Card) not yet implemented. Alembic not set up. This is the critical next step to enable backend API development.
+**Notes**: Database modeling complete with all Kanban tables (User, Board, Column, Card), Alembic migrations, and comprehensive tests. Ready for backend API development.
 
 ---
 
@@ -384,7 +384,6 @@
 
 - ⚠️ Frontend not connected to backend API (using local state)
 - ⚠️ No frontend tests configured
-- ⚠️ Database only has User table, missing Kanban tables
 
 **Not Started (Critical Blockers)**:
 
@@ -465,4 +464,4 @@
 - Parts 8-10 (AI): 5-7 days
 - **Total remaining**: ~11-13 days
 
-**Overall progress**: ~40% complete (infrastructure and frontend UI done, backend data layer and API pending)
+**Overall progress**: ~55% complete (infrastructure, frontend UI, and database layer complete, backend API pending)

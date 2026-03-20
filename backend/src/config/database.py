@@ -37,9 +37,38 @@ def get_db():
 
 def init_db():
     """
-    Initialize database by creating all tables.
+    Initialize database using Alembic migrations.
     """
-    from src.models import Base  # Import all models
+    import subprocess
+    import sys
+    import os
     
-    Base.metadata.create_all(bind=engine)
-    print("Database initialized successfully")
+    try:
+        # Get the directory where this file is located
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        backend_dir = os.path.join(current_dir, "..", "..")
+        
+        # Run Alembic upgrade to apply all migrations
+        result = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            cwd=backend_dir,
+            capture_output=True,
+            text=True
+        )
+        
+        if result.returncode == 0:
+            print("Database initialized successfully with Alembic migrations")
+            print(result.stdout)
+        else:
+            print("Error initializing database with Alembic:")
+            print(result.stderr)
+            # Fallback to create_all if Alembic fails
+            from src.models import Base  # Import all models
+            Base.metadata.create_all(bind=engine)
+            print("Fallback: Database initialized with create_all()")
+    except Exception as e:
+        print(f"Error running Alembic: {e}")
+        # Fallback to create_all if Alembic fails
+        from src.models import Base  # Import all models
+        Base.metadata.create_all(bind=engine)
+        print("Fallback: Database initialized with create_all()")
