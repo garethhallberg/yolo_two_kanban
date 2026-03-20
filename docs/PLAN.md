@@ -179,23 +179,28 @@
 
 ### Checklist:
 
-- [ ] Create board management endpoints:
-  - [ ] GET /api/boards - get user's board
-  - [ ] PUT /api/boards - update board
-- [ ] Create column management endpoints:
-  - [ ] POST /api/columns - create column
-  - [ ] PUT /api/columns/{id} - update column (rename)
-  - [ ] DELETE /api/columns/{id} - delete column
-- [ ] Create card management endpoints:
-  - [ ] POST /api/cards - create card
-  - [ ] PUT /api/cards/{id} - update card
-  - [ ] DELETE /api/cards/{id} - delete card
-  - [ ] PUT /api/cards/{id}/move - move card between columns
-- [ ] Implement proper error handling and validation
-- [ ] Add request/response logging
+- [x] Create board management endpoints:
+  - [x] GET /api/boards - get user's board
+  - [x] PUT /api/boards - update board
+  - [x] GET /api/boards/full - get full board with columns and cards
+- [x] Create column management endpoints:
+  - [x] POST /api/columns - create column
+  - [x] PUT /api/columns/{id} - update column (rename)
+  - [x] DELETE /api/columns/{id} - delete column
+  - [x] PUT /api/columns/{id}/reorder - update column position
+  - [x] GET /api/columns/board/{board_id} - get all columns for board
+- [x] Create card management endpoints:
+  - [x] POST /api/cards - create card
+  - [x] PUT /api/cards/{id} - update card
+  - [x] DELETE /api/cards/{id} - delete card
+  - [x] PUT /api/cards/{id}/move - move card between columns
+  - [x] PUT /api/cards/{id}/reorder - reorder card within column
+  - [x] GET /api/cards/column/{column_id} - get all cards for column
+- [x] Implement proper error handling and validation
+- [x] Add request/response logging
 - [ ] Implement rate limiting
 - [ ] Add API versioning
-- [ ] Create comprehensive API documentation (OpenAPI/Swagger)
+- [x] Create comprehensive API documentation (OpenAPI/Swagger)
 
 ### Success Criteria:
 
@@ -369,7 +374,7 @@
 
 ## Current Implementation Status Summary
 
-**Completed (Parts 1-4, Part 2 fully, Part 3 mostly, Part 4 fully)**:
+**Completed (Parts 1-6)**:
 
 - ✅ Docker infrastructure with multi-stage builds
 - ✅ FastAPI backend with health/hello/auth endpoints
@@ -379,16 +384,21 @@
 - ✅ JWT authentication with login page
 - ✅ Custom color scheme implemented
 - ✅ Basic test coverage for auth and hello endpoints
+- ✅ Database modeling with SQLAlchemy models and Alembic migrations
+- ✅ Complete CRUD API for boards, columns, and cards
+- ✅ Proper error handling and validation
+- ✅ Request/response logging
+- ✅ OpenAPI/Swagger documentation
 
 **In Progress / Partial**:
 
 - ⚠️ Frontend not connected to backend API (using local state)
 - ⚠️ No frontend tests configured
+- ⚠️ No rate limiting implemented
+- ⚠️ No API versioning implemented
 
-**Not Started (Critical Blockers)**:
+**Not Started**:
 
-- ❌ Part 5: Database Modeling (boards, columns, cards tables)
-- ❌ Part 6: Backend API CRUD endpoints for Kanban
 - ❌ Part 7: Frontend-backend integration
 - ❌ Parts 8-10: AI features
 
@@ -464,4 +474,4 @@
 - Parts 8-10 (AI): 5-7 days
 - **Total remaining**: ~11-13 days
 
-**Overall progress**: ~55% complete (infrastructure, frontend UI, and database layer complete, backend API pending)
+**Overall progress**: ~85% complete (infrastructure, frontend UI, database layer, and backend API complete, frontend-backend integration and AI features pending)

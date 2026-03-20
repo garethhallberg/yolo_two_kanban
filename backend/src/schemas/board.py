@@ -8,14 +8,14 @@ class BoardBase(BaseModel):
 class BoardCreate(BoardBase):
     pass
 
-class BoardUpdate(BoardBase):
-    pass
+class BoardUpdate(BaseModel):
+    title: Optional[str] = None
 
 class BoardResponse(BoardBase):
     id: int
     user_id: int
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

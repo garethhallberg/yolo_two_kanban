@@ -11,14 +11,17 @@ class ColumnBase(BaseModel):
 class ColumnCreate(ColumnBase):
     board_id: int
 
-class ColumnUpdate(ColumnBase):
-    pass
+class ColumnUpdate(BaseModel):
+    title: Optional[str] = None
+    position: Optional[float] = None
+    color: Optional[str] = None
+    wip_limit: Optional[int] = None
 
 class ColumnResponse(ColumnBase):
     id: int
     board_id: int
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

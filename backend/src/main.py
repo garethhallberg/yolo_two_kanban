@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.config.settings import settings
-from src.api.routers import health, hello, auth
+from src.api.routers import health, hello, auth, boards, columns, cards
 from src.database.connection import init_db
 from src.utils.logging import configure_logging
 
@@ -87,6 +87,12 @@ logger.info("Including hello router at /api/hello")
 app.include_router(hello.router, prefix="/api/hello", tags=["hello"])
 logger.info("Including auth router at /api/auth")
 app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
+logger.info("Including boards router at /api/boards")
+app.include_router(boards.router, prefix="/api/boards", tags=["boards"])
+logger.info("Including columns router at /api/columns")
+app.include_router(columns.router, prefix="/api/columns", tags=["columns"])
+logger.info("Including cards router at /api/cards")
+app.include_router(cards.router, prefix="/api/cards", tags=["cards"])
 logger.info("All routers included")
 
 

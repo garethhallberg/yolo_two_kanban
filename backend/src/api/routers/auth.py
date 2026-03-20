@@ -65,6 +65,28 @@ async def get_current_user(
     except JWTError:
         raise credentials_exception
 
+    # For MVP: Handle hardcoded user
+    if username == "user":
+        logger.info(f"[BACKEND] Using hardcoded user: {username}")
+        # Check if user exists in database, create if not
+        user = UserService.get_by_username(db, username=username)
+        if not user:
+            logger.info(f"[BACKEND] Creating hardcoded user: {username}")
+            # Create hardcoded user with pre-hashed password
+            # Use a simple hash for the hardcoded password to avoid bcrypt issues
+            from passlib.hash import pbkdf2_sha256
+            hashed_password = pbkdf2_sha256.hash("password")
+            user = User(
+                username=username,
+                hashed_password=hashed_password
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+            logger.info(f"[BACKEND] Created hardcoded user with id={user.id}")
+        return user
+
+    # For regular users (future multi-user support)
     user = UserService.get_by_username(db, username=token_data.username)
     if user is None:
         raise credentials_exception

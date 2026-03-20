@@ -21,14 +21,28 @@ class CardBase(BaseModel):
 class CardCreate(CardBase):
     column_id: int
 
-class CardUpdate(CardBase):
-    pass
+class CardUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    position: Optional[float] = None
+    priority: Optional[str] = None
+    assignee: Optional[str] = None
+    due_date: Optional[datetime] = None
+    tags: Optional[List[str]] = None
+
+    @field_validator('priority')
+    def validate_priority(cls, v):
+        if v is not None:
+            valid_priorities = ['low', 'medium', 'high', 'critical']
+            if v not in valid_priorities:
+                raise ValueError(f'Priority must be one of {valid_priorities}')
+        return v
 
 class CardResponse(CardBase):
     id: int
     column_id: int
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
