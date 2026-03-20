@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/lib/services/auth';
+import { apiService } from '@/lib/services/api';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -20,6 +21,9 @@ export function AuthGuard({ children }: AuthGuardProps) {
         router.push('/login');
         return;
       }
+
+      // Initialize API service with token
+      apiService.setToken(token);
 
       // Optionally verify token with backend
       // For now, just check existence

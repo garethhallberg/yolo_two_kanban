@@ -38,7 +38,8 @@ class ColumnService:
             title=column_data.title,
             position=new_position,
             color=column_data.color,
-            wip_limit=column_data.wip_limit
+            wip_limit=column_data.wip_limit,
+            updated_at=func.now()  # Set updated_at to current time on creation
         )
         db.add(column)
         db.commit()

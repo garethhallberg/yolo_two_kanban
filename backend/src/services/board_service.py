@@ -1,8 +1,8 @@
 from typing import Optional, List
-from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import and_, func
 
-from ..database.models import KanbanBoard, User
+from ..database.models import KanbanBoard, User, KanbanColumn
 from ..schemas.board import BoardCreate, BoardUpdate
 
 
@@ -22,7 +22,8 @@ class BoardService:
         """Create a new board for user"""
         board = KanbanBoard(
             user_id=user_id,
-            title=board_data.title
+            title=board_data.title,
+            updated_at=func.now()  # Set updated_at to current time on creation
         )
         db.add(board)
         db.commit()
@@ -60,5 +61,8 @@ class BoardService:
         return (
             db.query(KanbanBoard)
             .filter(KanbanBoard.user_id == user_id)
+            .options(
+                joinedload(KanbanBoard.columns).joinedload(KanbanColumn.cards)
+            )
             .first()
         )

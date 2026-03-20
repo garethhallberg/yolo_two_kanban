@@ -19,3 +19,5 @@ class BoardResponse(BoardBase):
 
     class Config:
         from_attributes = True
+
+

@@ -72,7 +72,7 @@ def update_board(
     return updated_board
 
 
-@router.get("/full", response_model=BoardResponse)
+@router.get("/full")
 def get_full_board(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Session = Depends(get_db)
@@ -90,4 +90,41 @@ def get_full_board(
         logger.info(f"[BACKEND] Created default board with id={board.id}")
     
     logger.info(f"[BACKEND] Returning full board with id={board.id}")
-    return board
+    # Return a custom response with columns and cards
+    return {
+        "id": board.id,
+        "user_id": board.user_id,
+        "title": board.title,
+        "created_at": board.created_at,
+        "updated_at": board.updated_at,
+        "columns": [
+            {
+                "id": col.id,
+                "board_id": col.board_id,
+                "title": col.title,
+                "position": col.position,
+                "created_at": col.created_at,
+                "updated_at": col.updated_at,
+                "color": col.color,
+                "wip_limit": col.wip_limit
+            }
+            for col in board.columns
+        ],
+        "cards": [
+            {
+                "id": card.id,
+                "column_id": card.column_id,
+                "title": card.title,
+                "description": card.description,
+                "position": card.position,
+                "created_at": card.created_at,
+                "updated_at": card.updated_at,
+                "priority": card.priority,
+                "assignee": card.assignee,
+                "due_date": card.due_date,
+                "tags": card.tags
+            }
+            for col in board.columns
+            for card in col.cards
+        ]
+    }

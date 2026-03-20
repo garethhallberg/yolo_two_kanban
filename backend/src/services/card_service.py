@@ -41,7 +41,8 @@ class CardService:
             priority=card_data.priority,
             assignee=card_data.assignee,
             due_date=card_data.due_date,
-            tags=card_data.tags
+            tags=card_data.tags,
+            updated_at=func.now()  # Set updated_at to current time on creation
         )
         db.add(card)
         db.commit()

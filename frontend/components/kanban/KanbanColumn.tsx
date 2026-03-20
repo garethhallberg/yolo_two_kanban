@@ -7,7 +7,7 @@ import { KanbanColumn as KanbanColumnType, KanbanCard as KanbanCardType } from '
 import { KanbanCard } from './KanbanCard';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Pencil, Plus, X } from 'lucide-react';
+import { Pencil, Plus, X, Check as CheckIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface KanbanColumnProps {
@@ -18,7 +18,8 @@ interface KanbanColumnProps {
   onCardEdit?: (card: KanbanCardType) => void;
   onCardMove?: (cardId: string, fromColumnId: string, toColumnId: string) => void;
   onColumnRename?: (columnId: string, newTitle: string) => void;
-  onAddCard?: (columnId: string) => void;
+  onColumnDelete?: (columnId: string) => void;
+  onAddCard?: (columnId: string, title: string) => void;
   isOverlay?: boolean;
 }
 
@@ -30,6 +31,7 @@ export function KanbanColumn({
   onCardEdit,
   onCardMove,
   onColumnRename,
+  onColumnDelete,
   onAddCard,
   isOverlay = false,
 }: KanbanColumnProps) {
@@ -55,7 +57,7 @@ export function KanbanColumn({
       // For now, we'll just reset the state
       setNewCardTitle('');
       setIsAddingCard(false);
-      onAddCard?.(column.id);
+      onAddCard?.(column.id, newCardTitle);
     }
   };
 
@@ -107,7 +109,7 @@ export function KanbanColumn({
                 onClick={handleRenameSubmit}
                 className="h-8 w-8 p-0"
               >
-                <Check className="h-4 w-4" />
+                <CheckIcon className="h-4 w-4" />
               </Button>
               <Button
                 variant="ghost"
@@ -129,14 +131,24 @@ export function KanbanColumn({
               <span className="text-sm text-gray-500 dark:text-gray-400">
                 ({columnCards.length})
               </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsEditing(true)}
-                className="h-8 w-8 p-0 ml-auto"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
+              <div className="flex gap-1 ml-auto">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsEditing(true)}
+                  className="h-8 w-8 p-0"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onColumnDelete?.(column.id)}
+                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </>
           )}
         </div>
