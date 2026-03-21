@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/Button';
 import { Plus, Settings, Loader2 } from 'lucide-react';
 import { CardEditor } from './CardEditor';
 import { Header } from '@/components/layout/Header';
-import { useKanban } from '@/lib/hooks/useKanban';
+import { useKanban } from '@/lib/context/KanbanContext';
 
 interface KanbanBoardProps {
   initialBoard?: KanbanBoardType;

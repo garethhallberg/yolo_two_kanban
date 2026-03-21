@@ -13,7 +13,7 @@ class AIRequest(BaseModel):
     """
     message: str = Field(..., min_length=1, max_length=1000, 
                          description="User message to send to AI")
-    max_tokens: Optional[int] = Field(100, ge=10, le=500, 
+    max_tokens: Optional[int] = Field(1000, ge=10, le=4000,
                                      description="Maximum tokens for AI response")
     temperature: Optional[float] = Field(0.7, ge=0.0, le=1.0, 
                                        description="Temperature for response creativity")

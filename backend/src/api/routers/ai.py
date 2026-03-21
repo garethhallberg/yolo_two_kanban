@@ -7,13 +7,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 
 from src.services.ai_service import openrouter_service
-from src.schemas.ai import AIRequest, AIResponse, AITestResponse, AIHealthCheck, AIKanbanResponse
+from src.schemas.ai import AIRequest, AIResponse, AITestResponse, AIHealthCheck, AIKanbanResponse, ActionType
 from src.api.routers.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/ai",
     tags=["ai"],
     dependencies=[Depends(HTTPBearer())],
 )
@@ -21,16 +20,16 @@ router = APIRouter(
 
 @router.get("/test", response_model=AITestResponse)
 async def test_ai_connection(
-    current_user: dict = Depends(get_current_user)
+    current_user=Depends(get_current_user)
 ) -> AITestResponse:
     """
     Test endpoint for AI connectivity.
-    
+
     This endpoint sends a simple "2+2" question to the OpenRouter API
     and returns the response to verify that the AI service is working.
     """
     try:
-        logger.info(f"User {current_user['username']} testing AI connection")
+        logger.info(f"User {current_user.username} testing AI connection")
         
         # Test the connection
         success = await openrouter_service.test_connection()
@@ -67,23 +66,23 @@ async def test_ai_connection(
 @router.post("/chat", response_model=AIKanbanResponse)
 async def chat_with_ai(
     request: AIRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user=Depends(get_current_user)
 ) -> AIKanbanResponse:
     """
     Chat with AI assistant for Kanban operations.
-    
+
     This endpoint sends a user message to the OpenRouter API
     and returns a structured response that may include Kanban updates.
     """
     try:
-        logger.info(f"User {current_user['username']} sending message to AI: {request.message[:50]}...")
+        logger.info(f"User {current_user.username} sending message to AI: {request.message[:50]}...")
         
         # Get user's board for context
         from src.services.board_service import BoardService
-        from src.database.session import get_db
+        from src.database.connection import get_db
         
         db = next(get_db())
-        board = BoardService.get_board_with_columns_and_cards(db, current_user['id'])
+        board = BoardService.get_board_with_columns_and_cards(db, current_user.id)
         
         # Serialize board state for AI context
         board_context = BoardService.serialize_board_for_ai(board) if board else {"error": "No board found"}
@@ -166,9 +165,42 @@ Response format for Kanban updates:
                     response_text = response
                     explanation = None
             else:
-                response_text = response
-                explanation = None
-                
+                # Try to extract card movement from AI reasoning text
+                import re
+                try:
+                    # Look for patterns like "card id X" and "column id Y"
+                    card_id_pattern = r'card.*?id\s*(\d+)'
+                    column_pattern = r'column.*?id\s*(\d+)'
+                    
+                    card_id_match = re.search(card_id_pattern, response, re.IGNORECASE)
+                    column_matches = list(re.finditer(column_pattern, response, re.IGNORECASE))
+                    
+                    if card_id_match and len(column_matches) >= 2:
+                        # Extract card movement details
+                        card_id = int(card_id_match.group(1))
+                        from_column_id = int(column_matches[0].group(1))
+                        to_column_id = int(column_matches[1].group(1))
+                        
+                        # Create Kanban update as proper Pydantic model
+                        from src.schemas.ai import KanbanUpdate
+                        kanban_updates.append(KanbanUpdate(
+                            action="MOVE",
+                            element_type="card",
+                            element_id=card_id,
+                            element_data={},
+                            target_column_id=to_column_id,
+                            new_position=999
+                        ))
+                        
+                        response_text = f"I will move card {card_id} from column {from_column_id} to column {to_column_id}"
+                        explanation = "Extracted card movement from AI reasoning"
+                    else:
+                        response_text = response
+                        explanation = None
+                except Exception as e:
+                    logger.warning(f"Failed to extract card movement from reasoning: {e}")
+                    response_text = response
+                    explanation = None
         except Exception as e:
             logger.warning(f"Failed to parse structured AI response: {e}")
             response_text = response
@@ -191,7 +223,7 @@ Response format for Kanban updates:
             # Get or create conversation session
             db = next(get_db())
             conversation = db.query(AIConversation).filter(
-                AIConversation.user_id == current_user['id'],
+                AIConversation.user_id == current_user.id,
                 AIConversation.is_active == True
             ).first()
             
@@ -199,7 +231,7 @@ Response format for Kanban updates:
                 # Create new conversation session
                 session_id = generate_session_id()
                 conversation = AIConversation(
-                    user_id=current_user['id'],
+                    user_id=current_user.id,
                     session_id=session_id,
                     is_active=True
                 )
@@ -222,7 +254,7 @@ Response format for Kanban updates:
                 conversation_id=conversation.id,
                 role="ai",
                 content=response_text,
-                kanban_updates=[update.model_dump() for update in kanban_updates] if kanban_updates else None,
+                kanban_updates=[update.model_dump() if hasattr(update, 'model_dump') else update for update in kanban_updates] if kanban_updates else None,
                 tokens_used=len(response_text.split())
             )
             db.add(ai_message)
@@ -246,71 +278,58 @@ Response format for Kanban updates:
                 
                 # Get database session
                 db = next(get_db())
-                
-                # Start transaction
-                db.begin()
-                
+
                 try:
                     # Apply each update in order
                     for update in kanban_updates:
-                        if update.element_type == "board":
-                            if update.action == ActionType.CREATE:
-                                # Create new board
-                                board_data = BoardCreate(**update.element_data)
-                                BoardService.create_board(db, current_user['id'], board_data)
-                            elif update.action == ActionType.UPDATE and update.element_id:
-                                # Update existing board
-                                board_data = BoardUpdate(**update.element_data)
-                                BoardService.update_board(db, update.element_id, board_data)
-                            elif update.action == ActionType.DELETE and update.element_id:
-                                # Delete board
-                                BoardService.delete_board(db, update.element_id)
-                                
-                        elif update.element_type == "column":
-                            if update.action == ActionType.CREATE:
-                                # Create new column
-                                column_data = ColumnCreate(**update.element_data)
-                                ColumnService.create_column(db, column_data.board_id, column_data)
-                            elif update.action == ActionType.UPDATE and update.element_id:
-                                # Update existing column
-                                column_data = ColumnUpdate(**update.element_data)
-                                ColumnService.update_column(db, update.element_id, column_data)
-                            elif update.action == ActionType.DELETE and update.element_id:
-                                # Delete column
-                                ColumnService.delete_column(db, update.element_id)
-                            elif update.action == ActionType.MOVE and update.element_id:
-                                # Move column (update position)
-                                column_data = ColumnUpdate(position=update.new_position)
-                                ColumnService.update_column(db, update.element_id, column_data)
-                                
-                        elif update.element_type == "card":
-                            if update.action == ActionType.CREATE:
-                                # Create new card
+                        logger.info(f"Applying update: {update.action} {update.element_type} id={update.element_id}")
+
+                        if update.element_type == "card":
+                            if update.action == ActionType.MOVE and update.element_id:
+                                if update.target_column_id is not None:
+                                    pos = update.new_position if update.new_position is not None else 999
+                                    result = CardService.move_card(db, update.element_id, update.target_column_id, pos)
+                                    if result:
+                                        logger.info(f"Successfully moved card {update.element_id} to column {update.target_column_id}")
+                                    else:
+                                        logger.warning(f"Card {update.element_id} not found for move")
+                            elif update.action == ActionType.CREATE:
                                 card_data = CardCreate(**update.element_data)
                                 CardService.create_card(db, card_data.column_id, card_data)
                             elif update.action == ActionType.UPDATE and update.element_id:
-                                # Update existing card
                                 card_data = CardUpdate(**update.element_data)
                                 CardService.update_card(db, update.element_id, card_data)
                             elif update.action == ActionType.DELETE and update.element_id:
-                                # Delete card
                                 CardService.delete_card(db, update.element_id)
-                            elif update.action == ActionType.MOVE and update.element_id:
-                                # Move card to different column
-                                if update.target_column_id is not None and update.new_position is not None:
-                                    CardService.move_card(db, update.element_id, update.target_column_id, update.new_position)
-                    
-                    # Commit transaction if all updates succeed
-                    db.commit()
+
+                        elif update.element_type == "column":
+                            if update.action == ActionType.CREATE:
+                                column_data = ColumnCreate(**update.element_data)
+                                ColumnService.create_column(db, column_data.board_id, column_data)
+                            elif update.action == ActionType.UPDATE and update.element_id:
+                                column_data = ColumnUpdate(**update.element_data)
+                                ColumnService.update_column(db, update.element_id, column_data)
+                            elif update.action == ActionType.DELETE and update.element_id:
+                                ColumnService.delete_column(db, update.element_id)
+
+                        elif update.element_type == "board":
+                            if update.action == ActionType.CREATE:
+                                board_data = BoardCreate(**update.element_data)
+                                BoardService.create_board(db, current_user.id, board_data)
+                            elif update.action == ActionType.UPDATE and update.element_id:
+                                board_data = BoardUpdate(**update.element_data)
+                                BoardService.update_board(db, update.element_id, board_data)
+                            elif update.action == ActionType.DELETE and update.element_id:
+                                BoardService.delete_board(db, update.element_id)
+
                     logger.info(f"Successfully applied {len(kanban_updates)} Kanban updates")
-                    
+
                 except Exception as e:
-                    # Rollback transaction if any update fails
                     db.rollback()
                     logger.error(f"Failed to apply Kanban updates: {e}")
                     response_text = f"AI analysis complete, but updates failed: {str(e)}"
                     explanation = "Some updates could not be applied due to errors"
-                    kanban_updates = []  # Clear updates since they weren't applied
+                    kanban_updates = []
                     
             except Exception as e:
                 logger.error(f"Error setting up transaction for Kanban updates: {e}")
@@ -342,7 +361,7 @@ Response format for Kanban updates:
 
 @router.get("/health", response_model=AIHealthCheck)
 async def ai_health_check(
-    current_user: dict = Depends(get_current_user)
+    current_user=Depends(get_current_user)
 ) -> AIHealthCheck:
     """
     Health check endpoint for AI service.
@@ -351,7 +370,7 @@ async def ai_health_check(
     and can connect to the OpenRouter API.
     """
     try:
-        logger.info(f"User {current_user['username']} checking AI health")
+        logger.info(f"User {current_user.username} checking AI health")
         
         # Test connection to OpenRouter
         api_connected = await openrouter_service.test_connection()
