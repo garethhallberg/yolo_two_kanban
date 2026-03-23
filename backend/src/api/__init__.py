@@ -1,9 +1,8 @@
 """
 API routers and endpoints.
 """
-from src.api.routers import health, hello
+from src.api.routers import health
 
 __all__ = [
     "health",
-    "hello",
 ]
