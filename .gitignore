@@ -353,3 +353,5 @@ logs/
 secrets.yml
 secrets.yaml
 secrets.json
+
+.claude
