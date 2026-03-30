@@ -15,40 +15,20 @@ export default function LoginPage() {
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
-    console.log('[LoginPage] ========== FORM SUBMIT START ==========');
-    console.log('[LoginPage] Form submit event triggered');
     e.preventDefault();
-    console.log('[LoginPage] Prevented default form submission');
     setError('');
-    console.log('[LoginPage] Error state cleared');
     setLoading(true);
-    console.log('[LoginPage] Loading state set to true');
 
     try {
-      console.log('[LoginPage] Creating credentials object');
       const credentials: LoginCredentials = { username, password };
-      console.log('[LoginPage] Credentials created:', { username, password: '***' });
-      
-      console.log('[LoginPage] Calling authService.login()');
       const response = await authService.login(credentials);
-      console.log('[LoginPage] Login response received:', response);
-      
-      console.log('[LoginPage] Setting token in localStorage');
       authService.setToken(response.access_token);
-      console.log('[LoginPage] Token set, redirecting to home page');
       router.push('/');
-      console.log('[LoginPage] Redirect initiated');
     } catch (err) {
-      console.error('[LoginPage] ========== LOGIN FAILED ==========');
-      console.error('[LoginPage] Login failed with error:', err);
       setError(err instanceof Error ? err.message : 'Login failed');
-      console.log('[LoginPage] Error state set');
     } finally {
-      console.log('[LoginPage] Setting loading state to false');
       setLoading(false);
-      console.log('[LoginPage] Loading state updated');
     }
-    console.log('[LoginPage] ========== FORM SUBMIT END ==========');
   };
 
   return (
@@ -76,11 +56,7 @@ export default function LoginPage() {
               id="username"
               type="text"
               value={username}
-              onChange={(e) => {
-                console.log('[LoginPage] Username input changed:', e.target.value);
-                setUsername(e.target.value);
-                console.log('[LoginPage] Username state updated');
-              }}
+              onChange={(e) => setUsername(e.target.value)}
               required
               disabled={loading}
               placeholder="Enter your username"
@@ -95,11 +71,7 @@ export default function LoginPage() {
               id="password"
               type="password"
               value={password}
-              onChange={(e) => {
-                console.log('[LoginPage] Password input changed (length):', e.target.value.length);
-                setPassword(e.target.value);
-                console.log('[LoginPage] Password state updated');
-              }}
+              onChange={(e) => setPassword(e.target.value)}
               required
               disabled={loading}
               placeholder="Enter your password"

@@ -47,9 +47,13 @@ export const ChatSidebar: React.FC = () => {
     };
 
     socket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'kanban_update') {
-        loadBoard();
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'kanban_update') {
+          loadBoard();
+        }
+      } catch {
+        console.error('WebSocket received non-JSON message:', event.data);
       }
     };
 
@@ -62,18 +66,18 @@ export const ChatSidebar: React.FC = () => {
       console.error('WebSocket error:', error);
     };
 
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.close();
-        socketRef.current = null;
-      }
-    };
   };
 
   useEffect(() => {
     if (isOpen) {
       connectWebSocket();
     }
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.close();
+        socketRef.current = null;
+      }
+    };
   }, [isOpen]);
 
   const handleSendMessage = async () => {

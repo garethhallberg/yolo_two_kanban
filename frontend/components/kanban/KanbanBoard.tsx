@@ -188,9 +188,10 @@ export function KanbanBoard({ initialBoard, onBoardChange }: KanbanBoardProps) {
       
       createCard(columnId, newCard).then(newCard => {
         if (newCard) {
-          // Set the new card for editing
           setEditingCard(newCard);
         }
+      }).catch(err => {
+        console.error('Failed to create card:', err);
       });
     }
   };

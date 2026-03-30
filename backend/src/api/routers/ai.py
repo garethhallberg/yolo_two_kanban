@@ -6,9 +6,11 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 
+from sqlalchemy.orm import Session
 from src.services.ai_service import openrouter_service
 from src.schemas.ai import AIRequest, AIResponse, AITestResponse, AIHealthCheck, AIKanbanResponse, ActionType
 from src.api.routers.auth import get_current_user
+from src.database.connection import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +68,8 @@ async def test_ai_connection(
 @router.post("/chat", response_model=AIKanbanResponse)
 async def chat_with_ai(
     request: AIRequest,
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
 ) -> AIKanbanResponse:
     """
     Chat with AI assistant for Kanban operations.
@@ -76,12 +79,10 @@ async def chat_with_ai(
     """
     try:
         logger.info(f"User {current_user.username} sending message to AI: {request.message[:50]}...")
-        
+
         # Get user's board for context
         from src.services.board_service import BoardService
-        from src.database.connection import get_db
-        
-        db = next(get_db())
+
         board = BoardService.get_board_with_columns_and_cards(db, current_user.id)
         
         # Serialize board state for AI context
